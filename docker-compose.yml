@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: wholesale_garments_bot
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DB_PATH=data/database.db
+    volumes:
+      # Persist SQLite database inside the local 'data' directory
+      - ./data:/app/data
+      # Persist the FAISS index inside the local 'faiss_index' directory
+      - ./faiss_index:/app/faiss_index

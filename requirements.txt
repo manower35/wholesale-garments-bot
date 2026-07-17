@@ -1,0 +1,9 @@
+python-telegram-bot>=21.0,<22.0
+python-dotenv>=1.0.0
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-google-genai>=1.0.0
+crewai
+Pillow
+faiss-cpu
+langchain-community
