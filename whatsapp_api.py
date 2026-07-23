@@ -457,6 +457,8 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
     clean_greeting = re.sub(r'[^a-zA-Z0-9]', '', text_lower)
     if clean_greeting in ["start", "menu", "catalog", "hi", "hello", "hey", "welcome", "hie", "hola", "salam", "namaste", "atselection"] or text_lower in ["/start", "start", "/menu", "menu", "/catalog", "catalog", "hi", "hello", "hey"]:
         categories = db.get_categories()
+        # Ensure Independence Special comes first
+        categories = sorted(categories, key=lambda c: 0 if "independence" in c.lower() or "15" in c.lower() else 1)
         cat_list = []
         for c in categories:
             if c and not c.startswith("🛍"):
@@ -466,6 +468,7 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
         cat_text = "\n".join(cat_list)
         media_path = get_absolute_photo_path("logo.jpg")
         reply = (
+            f"🎉 *15 AUGUST INDEPENDENCE DAY SPECIAL SALE IS LIVE!* 🇮🇳\n\n"
             f"🙏 *{config.BUSINESS_NAME}*\n"
             f"_{config.BUSINESS_SUBTITLE}_\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -475,7 +478,7 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
             f"━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🛍️ *WHOLESALE GARMENTS CATALOG:*\n\n"
             f"{cat_text}\n\n"
-            f"📲 *Reply with any Category Name* (e.g. *Frock*, *Plazo*, *Western*) to view product photos!\n"
+            f"📲 *Reply with any Category Name* (e.g. *15 August*, *Frock*, *Plazo*) to view product photos!\n"
             f"👉 *Swipe-Reply* to any photo card for instant wholesale rate & stock quotation!"
         )
         return {"reply": reply, "mediaPath": media_path}

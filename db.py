@@ -168,8 +168,9 @@ def get_categories():
     """Lists all category names."""
     with db_session() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM categories ORDER BY name ASC")
-        return [row["name"] for row in cursor.fetchall()]
+        cursor.execute("SELECT DISTINCT name FROM categories UNION SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != ''")
+        cats = [row[0] for row in cursor.fetchall() if row[0]]
+        return sorted(cats, key=lambda c: (0, c) if "independence" in c.lower() or "15" in c.lower() else (1, c))
 
 # --- PRODUCT MANAGEMENT ---
 
