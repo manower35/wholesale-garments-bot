@@ -40,3 +40,7 @@ MAPS_LINK = "https://maps.google.com/?q=City+Plaza+Complex+Dewan+Dewdi+Hyderabad
 # CrewAI Multi-Agent System (set to True to enable CrewAI, False for simple LangChain)
 # NOTE: CrewAI uses 2+ LLM calls per message (slow). LangChain uses 1 call (fast).
 CREWAI_ENABLED = False
+
+# WhatsApp Gateway & Bridge Settings
+WHATSAPP_PORT = int(os.getenv("WHATSAPP_PORT", 5000))
+WHATSAPP_BRIDGE_URL = os.getenv("WHATSAPP_BRIDGE_URL", "http://localhost:3001")

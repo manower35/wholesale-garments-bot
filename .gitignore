@@ -56,3 +56,12 @@ Thumbs.db
 
 # User logs
 *.log
+
+# Node.js & WhatsApp Bridge
+node_modules/
+whatsapp_bridge/node_modules/
+.wwebjs_auth/
+whatsapp_bridge/.wwebjs_auth/
+.wwebjs_cache/
+whatsapp_bridge/.wwebjs_cache/
+open_qr_code.html

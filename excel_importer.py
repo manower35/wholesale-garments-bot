@@ -40,50 +40,42 @@ def import_excel_catalog(file_path: str) -> dict:
         summary["errors"].append(f"Failed to open/parse Excel file: {str(e)}")
         return summary
         
-    # Read headers from row 1
+    # Read rows and search for the header row dynamically
     rows_iter = sheet.iter_rows(values_only=True)
-    try:
-        headers = next(rows_iter)
-    except StopIteration:
-        summary["errors"].append("Spreadsheet is empty.")
-        wb.close()
-        return summary
-        
-    if not headers:
-        summary["errors"].append("Header row is missing or empty.")
-        wb.close()
-        return summary
-        
-    # Map column names (normalized) to indices
     header_map = {}
-    for idx, header in enumerate(headers):
-        if header is not None:
-            normalized = str(header).strip().lower().replace(" ", "_").replace("/", "_")
-            header_map[normalized] = idx
-            
-    # Validate required headers
-    # We require 'category', 'name' (or 'garment_name' or 'product_name'), and 'price'
     name_col = None
-    for name_variant in ["name", "garment_name", "product_name"]:
-        if name_variant in header_map:
-            name_col = header_map[name_variant]
+    category_col = None
+    price_col = None
+
+    for row in rows_iter:
+        if not row or not any(val is not None for val in row):
+            continue
+        
+        # Check if this row looks like the header row
+        temp_map = {}
+        for idx, cell_val in enumerate(row):
+            if cell_val is not None:
+                norm = str(cell_val).strip().lower().replace(" ", "_").replace("/", "_")
+                temp_map[norm] = idx
+        
+        # Check if 'category' or 'garment_name' or 'name' is in temp_map
+        found_name = any(k in temp_map for k in ["name", "garment_name", "product_name"])
+        found_cat = "category" in temp_map
+        
+        if found_name and found_cat:
+            header_map = temp_map
+            for k in ["name", "garment_name", "product_name"]:
+                if k in header_map:
+                    name_col = header_map[k]
+                    break
+            category_col = header_map["category"]
+            price_col = header_map.get("price")
             break
-            
-    if name_col is None:
-        summary["errors"].append("Required column 'Name' (or 'Garment Name') is missing.")
-        
-    if "category" not in header_map:
-        summary["errors"].append("Required column 'Category' is missing.")
-        
-    if "price" not in header_map:
-        summary["errors"].append("Required column 'Price' is missing.")
-        
-    if summary["errors"]:
+
+    if name_col is None or category_col is None:
+        summary["errors"].append("Could not locate valid header row with 'Garment Name' / 'Category'.")
         wb.close()
         return summary
-        
-    category_col = header_map["category"]
-    price_col = header_map["price"]
     
     # Optional columns
     desc_col = header_map.get("description")
@@ -108,7 +100,7 @@ def import_excel_catalog(file_path: str) -> dict:
             
         name_val = row[name_col]
         category_val = row[category_col]
-        price_val = row[price_col]
+        price_val = row[price_col] if price_col is not None and price_col < len(row) else 0.0
         
         # If crucial values are missing, skip or log error
         if name_val is None or category_val is None:
@@ -129,13 +121,13 @@ def import_excel_catalog(file_path: str) -> dict:
             
         # Parse and validate price
         try:
-            if price_val is None:
-                raise ValueError("Price is empty")
-            # Handle currency symbols if any
-            price_clean = str(price_val).replace("Rs.", "").replace("Rs", "").replace(",", "").strip()
-            price = float(price_clean)
-            if price < 0:
-                raise ValueError("Price cannot be negative")
+            if price_val is None or str(price_val).strip() == "":
+                price = 0.0
+            else:
+                price_clean = str(price_val).replace("Rs.", "").replace("Rs", "").replace(",", "").strip()
+                price = float(price_clean)
+                if price < 0:
+                    raise ValueError("Price cannot be negative")
         except Exception as e:
             summary["errors"].append(f"Row {row_num} ('{name}'): Invalid price '{price_val}'. Error: {str(e)}. Skipped.")
             summary["skipped"] += 1
