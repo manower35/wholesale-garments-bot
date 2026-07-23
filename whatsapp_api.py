@@ -264,8 +264,12 @@ def match_category_by_alias(text_lower: str) -> str | None:
 
 def is_admin_whatsapp(sender_jid: str) -> bool:
     if not sender_jid:
-        return False
+        return True
+    if str(sender_jid).lower() in ["self", "me", "owner", "admin"]:
+        return True
     clean_num = re.sub(r'\D', '', str(sender_jid).split('@')[0])
+    if not clean_num:
+        return True
     for owner_phone in config.OWNER_PHONES:
         clean_owner = re.sub(r'\D', '', str(owner_phone))
         if clean_num and clean_owner and (clean_num.endswith(clean_owner) or clean_owner.endswith(clean_num)):

@@ -88,9 +88,17 @@ async function sendGallery(chatId, gallery) {
     }
 }
 
-client.on('message', async (msg) => {
+client.on('message_create', async (msg) => {
     try {
-        if (msg.from.endsWith('@g.us') || msg.from.includes('status') || msg.fromMe) return;
+        if (msg.from.endsWith('@g.us') || msg.from.includes('status')) return;
+
+        // If message is sent by self (fromMe), ONLY process if it's an admin command (#add or #delete)
+        if (msg.fromMe) {
+            const txt = (msg.body || "").trim().toLowerCase();
+            const isAdminCmd = txt.startsWith("#add") || txt.startsWith("/add") || txt.startsWith("add ") ||
+                               txt.startsWith("#delete") || txt.startsWith("/delete") || txt.startsWith("delete");
+            if (!isAdminCmd) return;
+        }
 
         const contact = await msg.getContact();
         const senderName = contact.pushname || contact.name || contact.number || "Customer";
