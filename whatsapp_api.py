@@ -507,6 +507,8 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
                 count = len(db.get_products_by_category(c))
                 if count > 0:
                     cat_list.append(f"👉 *{c}* ({count} items)")
+                elif "independence" in c.lower() or "15" in c.lower():
+                    cat_list.append(f"👉 *{c}* (0 items - Uploading soon!)")
         cat_text = "\n".join(cat_list)
         media_path = get_absolute_photo_path("logo.jpg")
         reply = (
