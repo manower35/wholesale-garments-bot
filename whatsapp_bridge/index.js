@@ -182,9 +182,31 @@ client.on('message', async (msg) => {
             }
         }
     } catch (error) {
-        console.error('[!] Error:', error.message);
+        console.error('[!] Error processing message:', error.message);
         try {
-            await msg.reply("👋 *Welcome to AT SELECTION!*\nSwipe-reply to any photo to request rate!");
+            const logoPath = path.join(__dirname, '..', 'logo.jpg');
+            const welcomeText = (
+                "🙏 *AT SELECTION*\n" +
+                "_Wholesale Readymade Garments_\n" +
+                "━━━━━━━━━━━━━━━━━━━━\n" +
+                "📍 *Shop:* 1st Floor, Shop 7,8,9, City Plaza Complex, Dewan Dewdi, Hyderabad\n" +
+                "📞 *Owner:* Syed Ahmer (+91 9701515477)\n" +
+                "━━━━━━━━━━━━━━━━━━━━\n\n" +
+                "🛍️ *WHOLESALE GARMENTS CATALOG:*\n" +
+                "👉 *Frock & Dresses*\n" +
+                "👉 *Plazo & Sharara*\n" +
+                "👉 *Western Wear*\n" +
+                "👉 *Crop Top & Choli*\n" +
+                "👉 *Nightwear & Lounge*\n\n" +
+                "📲 *Reply with any Category Name* to view product photos!\n" +
+                "👉 *Swipe-Reply* to any photo card for quotation!"
+            );
+            if (fs.existsSync(logoPath)) {
+                const media = MessageMedia.fromFilePath(logoPath);
+                await client.sendMessage(msg.from, media, { caption: welcomeText });
+            } else {
+                await msg.reply(welcomeText);
+            }
         } catch (e) {}
     }
 });

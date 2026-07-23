@@ -446,24 +446,30 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
     if text_lower in ["!stock", "/stock", "stock", "stock summary", "stock report", "!report", "/report", "report"]:
         return {"reply": generate_executive_stock_report()}
 
-    if text_lower in ["/start", "start", "/menu", "menu", "/catalog", "catalog", "hi", "hello", "hey"]:
+    # GREETINGS & MAIN MENU
+    clean_greeting = re.sub(r'[^a-zA-Z0-9]', '', text_lower)
+    if clean_greeting in ["start", "menu", "catalog", "hi", "hello", "hey", "welcome", "hie", "hola", "salam", "namaste", "atselection"] or text_lower in ["/start", "start", "/menu", "menu", "/catalog", "catalog", "hi", "hello", "hey"]:
         categories = db.get_categories()
         cat_list = []
         for c in categories:
             if c and not c.startswith("🛍"):
                 count = len(db.get_products_by_category(c))
                 if count > 0:
-                    cat_list.append(f"👉 *{c}* ({count})")
+                    cat_list.append(f"👉 *{c}* ({count} items)")
         cat_text = "\n".join(cat_list)
         media_path = get_absolute_photo_path("logo.jpg")
         reply = (
             f"🙏 *{config.BUSINESS_NAME}*\n"
-            f"_{config.BUSINESS_SUBTITLE}_\n\n"
-            f"📍 {config.BUSINESS_ADDRESS}\n"
-            f"📞 {config.OWNER_PHONES[0]}\n\n"
-            f"🛍️ *Category list:*\n\n"
+            f"_{config.BUSINESS_SUBTITLE}_\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"📍 *Shop Address:* {config.BUSINESS_ADDRESS}\n"
+            f"👤 *Owner:* {config.OWNER_NAME}\n"
+            f"📞 *Call / WhatsApp:* +91 {config.OWNER_PHONES[0]}\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🛍️ *WHOLESALE GARMENTS CATALOG:*\n\n"
             f"{cat_text}\n\n"
-            f"📷 Type any category name to see photos!"
+            f"📲 *Reply with any Category Name* (e.g. *Frock*, *Plazo*, *Western*) to view product photos!\n"
+            f"👉 *Swipe-Reply* to any photo card for instant wholesale rate & stock quotation!"
         )
         return {"reply": reply, "mediaPath": media_path}
 
