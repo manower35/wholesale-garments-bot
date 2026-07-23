@@ -333,28 +333,31 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
             return {"reply": "⚠️ *Admin Security Barrier:* Only authorized shop owners/admins can add items to catalog."}
         
         raw_cmd = re.sub(r'^(?:#add|/add|add)\s*', '', body, flags=re.IGNORECASE).strip()
-        if not raw_cmd:
-            return {
-                "reply": (
-                    "⚠️ *Product Add Format Required!*\n\n"
-                    "📷 Send a product photo with caption:\n"
-                    "`#add Category | Garment Name | Sizes | Description`\n\n"
-                    "👉 *Example:*\n"
-                    "`#add Frock & Dresses | Rose Satin Party Gown | 24, 26, 28, 30 | High quality satin frock`"
-                )
-            }
         
-        parts = [p.strip() for p in raw_cmd.split("|")]
-        cat_input = parts[0] if len(parts) > 0 else "Frock & Dresses"
-        name_input = parts[1] if len(parts) > 1 else ""
-        sizes_input = parts[2] if len(parts) > 2 else "24, 26, 28, 30, 32, 34"
-        desc_input = parts[3] if len(parts) > 3 else f"Wholesale {name_input} available at AT SELECTION."
+        parts = [p.strip() for p in raw_cmd.split("|") if p.strip()]
+        cat_input = "Frock & Dresses"
+        sizes_input = "24, 26, 28, 30, 32, 34"
+        name_input = ""
         
-        if not name_input:
-            name_input = cat_input
-            cat_input = "Frock & Dresses"
+        if len(parts) == 1:
+            cat_input = parts[0]
+        elif len(parts) == 2:
+            cat_input = parts[0]
+            if re.search(r'\d', parts[1]) or "size" in parts[1].lower():
+                sizes_input = parts[1]
+            else:
+                name_input = parts[1]
+        elif len(parts) >= 3:
+            cat_input = parts[0]
+            name_input = parts[1]
+            sizes_input = parts[2]
             
         matched_category = match_category_by_alias(cat_input) or cat_input
+        if not name_input:
+            clean_cat_title = matched_category.replace("🇮🇳", "").strip()
+            name_input = f"{clean_cat_title} Design"
+            
+        desc_input = f"Wholesale {name_input} available at AT SELECTION."
         
         photo_filename = ""
         if media_data:
@@ -374,6 +377,13 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
                     f.write(img_bytes)
                 photo_filename = file_name
                 logger.info(f"Successfully saved uploaded product photo: {target_path}")
+                
+                # Format to 3:4 portrait view
+                try:
+                    from format_images_aspect_ratio import format_image_to_portrait
+                    format_image_to_portrait(target_path)
+                except Exception as fmt_err:
+                    logger.warning(f"Aspect ratio format warning: {fmt_err}")
             except Exception as e:
                 logger.error(f"Failed to save uploaded photo: {e}", exc_info=True)
                 
@@ -394,12 +404,11 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
             
         return {
             "reply": (
-                f"✅ *NEW PRODUCT ADDED TO CATALOG!*\n\n"
+                f"✅ *PRODUCT ADDED TO CATALOG!*\n\n"
                 f"🆔 Product ID: *#{new_prod_id}*\n"
-                f"👗 Garment Name: *{name_input}*\n"
                 f"📁 Category: *{matched_category}*\n"
                 f"📐 Sizes: *{sizes_input}*\n"
-                f"📷 Photo Saved: *{'Yes' if photo_filename else 'Text-only'}*"
+                f"📷 Photo: *{'Saved (3:4 Portrait)' if photo_filename else 'No image attached'}*"
             )
         }
 
