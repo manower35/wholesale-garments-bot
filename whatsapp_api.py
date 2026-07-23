@@ -160,10 +160,11 @@ def generate_executive_stock_report() -> str:
 
 def build_gallery_for_page(products: list, remaining_count: int = 0) -> list:
     gallery = []
-    total_items = len(products)
-    for idx, p in enumerate(products):
+    seen_media = set()
+    for p in products:
         photo = get_absolute_photo_path(p.get("photo_file_id"))
-        if photo:
+        if photo and photo not in seen_media and "logo.jpg" not in photo:
+            seen_media.add(photo)
             sizes = p.get("sizes") if p.get("sizes") else "All sizes"
             caption = (
                 f"👗 *{p['name']}*\n"
@@ -171,12 +172,13 @@ def build_gallery_for_page(products: list, remaining_count: int = 0) -> list:
                 f"🔢 No: *{p['id']}*\n\n"
                 f"👉 Rate/Quotation ke liye is photo par *Swipe-Reply* karo!"
             )
-            if idx == total_items - 1 and remaining_count > 0:
-                caption += f"\n\n➡️ *{remaining_count} MORE ITEMS AVAILABLE!*\n📲 Reply *NEXT* to view next {min(remaining_count, 10)} photos!"
-            elif idx == total_items - 1:
-                caption += "\n\n✅ *End of catalog for this category!*"
-
             gallery.append({"caption": caption, "mediaPath": photo})
+
+    if gallery and remaining_count > 0:
+        gallery[-1]["caption"] += f"\n\n➡️ *{remaining_count} MORE ITEMS AVAILABLE!*\n📲 Reply *NEXT* to view next {min(remaining_count, 10)} photos!"
+    elif gallery:
+        gallery[-1]["caption"] += "\n\n✅ *End of catalog for this category!*"
+
     return gallery
 
 def extract_product_id_from_text(text: str) -> int | None:
