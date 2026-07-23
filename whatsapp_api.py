@@ -196,11 +196,16 @@ def extract_product_id_from_text(text: str) -> int | None:
 
 def match_category_by_alias(text_lower: str) -> str | None:
     categories = db.get_categories()
+    clean_text = re.sub(r'[^a-zA-Z0-9\s]', '', text_lower).lower().strip()
+    
     for cat in categories:
-        if cat and not cat.startswith("🛍") and (cat.lower() in text_lower or text_lower in cat.lower()):
-            return cat
+        if cat and not cat.startswith("🛍"):
+            clean_cat = re.sub(r'[^a-zA-Z0-9\s]', '', cat).lower().strip()
+            if clean_cat and (clean_cat == clean_text or clean_text in clean_cat or clean_cat in clean_text):
+                return cat
             
     alias_map = {
+        "🇮🇳 Independence Special": ["independence", "15 august", "15aug", "august", "tiranga", "freedom", "flag", "independence special", "august special", "patriotic", "15th august", "15 aug"],
         "Frock & Dresses": ["frock", "frocks", "dress", "dresses", "gown", "gowns", "garment", "garments", "skirt", "ball gown"],
         "Western Wear": ["western", "western wear", "denim", "denims", "jean", "jeans", "pants", "pant", "trousers", "tunic", "shorts"],
         "Plazo & Sharara": ["plazo", "palazzo", "sharara", "shararas", "suit", "suits", "anarkali", "kurti", "dupatta"],
