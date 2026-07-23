@@ -336,6 +336,18 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
         if not is_admin_whatsapp(sender_jid):
             return {"reply": "⚠️ *Admin Security Barrier:* Only authorized shop owners/admins can add items to catalog."}
         
+        if not media_data and not has_media:
+            return {
+                "reply": (
+                    "⚠️ *Photo Required to Add Product!*\n\n"
+                    "📷 Please **ATTACH A PHOTO** from your phone gallery first, and write in the photo caption:\n"
+                    "`#add 15 August | 24-34`\n\n"
+                    "👉 *Step 1:* Tap Paperclip 📎 / Camera in WhatsApp\n"
+                    "👉 *Step 2:* Select garment photo from gallery\n"
+                    "👉 *Step 3:* Type `#add 15 August | 24-34` in caption & Send!"
+                )
+            }
+        
         raw_cmd = re.sub(r'^(?:#add|/add|add)\s*', '', body, flags=re.IGNORECASE).strip()
         
         parts = [p.strip() for p in raw_cmd.split("|") if p.strip()]
