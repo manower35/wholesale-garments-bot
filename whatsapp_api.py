@@ -4,6 +4,7 @@ import re
 import os
 import asyncio
 import datetime
+import difflib
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 
@@ -195,29 +196,70 @@ def extract_product_id_from_text(text: str) -> int | None:
     return None
 
 def match_category_by_alias(text_lower: str) -> str | None:
+    if not text_lower:
+        return None
+        
     categories = db.get_categories()
     clean_text = re.sub(r'[^a-zA-Z0-9\s]', '', text_lower).lower().strip()
     
+    # 1. Exact or Substring match on category names
     for cat in categories:
         if cat and not cat.startswith("🛍"):
             clean_cat = re.sub(r'[^a-zA-Z0-9\s]', '', cat).lower().strip()
             if clean_cat and (clean_cat == clean_text or clean_text in clean_cat or clean_cat in clean_text):
                 return cat
-            
+
     alias_map = {
-        "🇮🇳 Independence Special": ["independence", "15 august", "15aug", "august", "tiranga", "freedom", "flag", "independence special", "august special", "patriotic", "15th august", "15 aug"],
-        "Frock & Dresses": ["frock", "frocks", "dress", "dresses", "gown", "gowns", "garment", "garments", "skirt", "ball gown"],
-        "Western Wear": ["western", "western wear", "denim", "denims", "jean", "jeans", "pants", "pant", "trousers", "tunic", "shorts"],
-        "Plazo & Sharara": ["plazo", "palazzo", "sharara", "shararas", "suit", "suits", "anarkali", "kurti", "dupatta"],
-        "Crop Top & Choli": ["crop top", "choli", "crop top choli", "lehenga", "lehenga choli", "crop", "ghagra"],
-        "Nightwear & Lounge": ["nightwear", "night wear", "night", "lounge", "loungewear", "sleepwear", "pyjama", "pajama", "nighty"]
+        "🇮🇳 Independence Special": [
+            "independence", "independene", "indepandence", "independant", "indepent",
+            "15 august", "15august", "15augst", "15agust", "15aug", "15 aug",
+            "august", "augst", "agust", "tiranga", "freedom", "flag",
+            "independence special", "august special", "patriotic", "15th august"
+        ],
+        "Frock & Dresses": [
+            "frock", "frocks", "froc", "froks", "frok", "frocx",
+            "dress", "dresses", "dres", "gown", "gowns", "gwon", "gwons",
+            "garment", "garments", "skirt", "ball gown"
+        ],
+        "Western Wear": [
+            "western", "wester", "westeen", "western wear", "denim", "denims",
+            "jean", "jeans", "pants", "pant", "trousers", "tunic", "shorts"
+        ],
+        "Plazo & Sharara": [
+            "plazo", "palazzo", "palzo", "plazos", "sharara", "shararas", "sarara", "sararas",
+            "suit", "suits", "anarkali", "kurti", "dupatta"
+        ],
+        "Crop Top & Choli": [
+            "crop top", "croptop", "crop", "choli", "crop top choli",
+            "lehenga", "lehnga", "lehanga", "lehenga choli", "ghagra"
+        ],
+        "Nightwear & Lounge": [
+            "nightwear", "nigtwear", "night wear", "night", "lounge", "loungewear",
+            "sleepwear", "pyjama", "pajama", "pyjamas", "pajamas", "nighty"
+        ]
     }
-    
+
+    # 2. Substring match on explicit alias map
     for cat_name, keywords in alias_map.items():
         for kw in keywords:
-            if kw in text_lower:
+            if kw in clean_text or clean_text in kw:
                 if cat_name in categories:
                     return cat_name
+
+    # 3. Fuzzy matching (difflib) for spelling typos
+    all_keywords = []
+    kw_to_cat = {}
+    for cat_name, keywords in alias_map.items():
+        if cat_name in categories:
+            for kw in keywords:
+                all_keywords.append(kw)
+                kw_to_cat[kw] = cat_name
+                
+    close_matches = difflib.get_close_matches(clean_text, all_keywords, n=1, cutoff=0.65)
+    if close_matches:
+        matched_kw = close_matches[0]
+        return kw_to_cat[matched_kw]
+
     return None
 
 def is_admin_whatsapp(sender_jid: str) -> bool:
