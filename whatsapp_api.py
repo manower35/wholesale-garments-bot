@@ -615,6 +615,8 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
                 f"📷 Sending {len(gallery)} product photos...{more}"
             )
             return {"reply": reply, "gallery": gallery}
+        else:
+            return {"reply": f"📁 *{matched_cat}*\n\n✨ *Category is currently empty and ready for your 15 August photo uploads!*\n\n📷 Send a product photo with caption:\n`#add {matched_cat} | Garment Name | Sizes` to add new designs directly from your phone!"}
 
     # ==========================================
     # 6. 🔍 PRODUCT SEARCH BY NAME/KEYWORD (Frock, Gown, Yellow, Velvet, Rose, etc.)
