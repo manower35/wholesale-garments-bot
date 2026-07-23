@@ -277,8 +277,40 @@ def is_admin_whatsapp(sender_jid: str) -> bool:
     user_id = phone_to_user_id(sender_jid)
     return db.is_admin(user_id)
 
+RECENT_USER_UPLOADS = {}
+
 def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quoted_body: str = "", has_media: bool = False, sender_jid: str = "", media_data: str = None, media_mime: str = None) -> dict:
     text_lower = (body or "").lower().strip()
+
+    # Cache incoming standalone photo uploads for 5 minutes
+    if media_data:
+        import base64
+        try:
+            ext = ".jpg"
+            if media_mime and "png" in media_mime: ext = ".png"
+            elif media_mime and "webp" in media_mime: ext = ".webp"
+            
+            timestamp_id = int(datetime.datetime.now().timestamp() * 1000)
+            file_name = f"unique_upload_{timestamp_id}{ext}"
+            target_path = os.path.join(BASE_DIR, file_name)
+            
+            img_bytes = base64.b64decode(media_data)
+            with open(target_path, "wb") as f:
+                f.write(img_bytes)
+            
+            try:
+                from format_images_aspect_ratio import format_image_to_portrait
+                format_image_to_portrait(target_path)
+            except Exception:
+                pass
+                
+            RECENT_USER_UPLOADS[user_id] = {
+                "photo_file_id": file_name,
+                "timestamp": datetime.datetime.now()
+            }
+            logger.info(f"Cached recent photo upload for user #{user_id}: {file_name}")
+        except Exception as err:
+            logger.error(f"Error caching media upload: {err}")
 
     # ==========================================
     # 0. 🛠️ MOBILE ADMIN COMMANDS (#delete and #add)
@@ -336,7 +368,15 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
         if not is_admin_whatsapp(sender_jid):
             return {"reply": "⚠️ *Admin Security Barrier:* Only authorized shop owners/admins can add items to catalog."}
         
-        if not media_data and not has_media:
+        photo_filename = ""
+        cached = RECENT_USER_UPLOADS.get(user_id)
+        if cached:
+            elapsed = (datetime.datetime.now() - cached["timestamp"]).total_seconds()
+            if elapsed <= 300: # 5 minutes
+                photo_filename = cached["photo_file_id"]
+                RECENT_USER_UPLOADS.pop(user_id, None)
+
+        if not media_data and not photo_filename:
             return {
                 "reply": (
                     "⚠️ *Photo Required to Add Product!*\n\n"
@@ -375,8 +415,7 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
             
         desc_input = f"Wholesale {name_input} available at AT SELECTION."
         
-        photo_filename = ""
-        if media_data:
+        if media_data and not photo_filename:
             import base64
             try:
                 ext = ".jpg"
@@ -394,7 +433,6 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
                 photo_filename = file_name
                 logger.info(f"Successfully saved uploaded product photo: {target_path}")
                 
-                # Format to 3:4 portrait view
                 try:
                     from format_images_aspect_ratio import format_image_to_portrait
                     format_image_to_portrait(target_path)
