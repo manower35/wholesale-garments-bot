@@ -73,6 +73,8 @@ class WhatsAppRequestHandler(BaseHTTPRequestHandler):
                 sender_jid = payload.get("from", "")
                 sender_name = payload.get("senderName", "Customer")
                 body = payload.get("body", "").strip()
+                quoted_body = payload.get("quotedBody", "").strip()
+                has_media = payload.get("hasMedia", False)
                 media_data = payload.get("mediaData")
                 media_mime = payload.get("mediaMime")
 
