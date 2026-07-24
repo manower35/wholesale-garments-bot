@@ -101,10 +101,13 @@ client.on('message_create', async (msg) => {
                 return;
             }
 
-            const isTestCmd = txt.startsWith("#add") || txt.startsWith("/add") || txt.startsWith("add ") ||
+            const isTestCmd = msg.hasQuotedMsg ||
+                              txt.startsWith("#cart") || txt.startsWith("cart") ||
+                              txt.startsWith("#add") || txt.startsWith("/add") || txt.startsWith("add ") ||
                               txt.startsWith("#delete") || txt.startsWith("/delete") || txt.startsWith("delete") ||
                               txt.startsWith("#start") || txt.startsWith("/start") || txt === "start" ||
                               txt === "hi" || txt === "hello" || txt === "menu" || txt.startsWith("/menu") ||
+                              txt === "checkout" || txt === "pdf" || txt === "quotation" || txt === "invoice" ||
                               txt === "15 august" || txt === "independence" || txt === "frock" ||
                               txt === "plazo" || txt === "western" || txt === "crop top" ||
                               txt === "nightwear" || txt === "stock";
