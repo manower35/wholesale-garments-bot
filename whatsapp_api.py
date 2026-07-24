@@ -277,12 +277,13 @@ def is_admin_whatsapp(sender_jid: str) -> bool:
     user_id = phone_to_user_id(sender_jid)
     return db.is_admin(user_id)
 
-RECENT_USER_UPLOADS = {}
+LAST_ADMIN_UPLOAD = {}
 
 def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quoted_body: str = "", has_media: bool = False, sender_jid: str = "", media_data: str = None, media_mime: str = None) -> dict:
+    global LAST_ADMIN_UPLOAD
     text_lower = (body or "").lower().strip()
 
-    # Cache incoming standalone photo uploads for 5 minutes
+    # Cache incoming photo uploads for 10 minutes
     if media_data:
         import base64
         try:
@@ -304,11 +305,11 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
             except Exception:
                 pass
                 
-            RECENT_USER_UPLOADS[user_id] = {
+            LAST_ADMIN_UPLOAD = {
                 "photo_file_id": file_name,
                 "timestamp": datetime.datetime.now()
             }
-            logger.info(f"Cached recent photo upload for user #{user_id}: {file_name}")
+            logger.info(f"Cached recent photo upload: {file_name}")
         except Exception as err:
             logger.error(f"Error caching media upload: {err}")
 
@@ -369,12 +370,10 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
             return {"reply": "⚠️ *Admin Security Barrier:* Only authorized shop owners/admins can add items to catalog."}
         
         photo_filename = ""
-        cached = RECENT_USER_UPLOADS.get(user_id)
-        if cached:
-            elapsed = (datetime.datetime.now() - cached["timestamp"]).total_seconds()
-            if elapsed <= 300: # 5 minutes
-                photo_filename = cached["photo_file_id"]
-                RECENT_USER_UPLOADS.pop(user_id, None)
+        if LAST_ADMIN_UPLOAD and LAST_ADMIN_UPLOAD.get("photo_file_id"):
+            elapsed = (datetime.datetime.now() - LAST_ADMIN_UPLOAD["timestamp"]).total_seconds()
+            if elapsed <= 600: # 10 minutes
+                photo_filename = LAST_ADMIN_UPLOAD["photo_file_id"]
 
         if not media_data and not photo_filename:
             return {

@@ -265,6 +265,8 @@ app.get('/', (req, res) => {
         </div></body></html>`);
 });
 
+app.listen(BRIDGE_PORT, () => console.log(`[*] Dashboard at http://localhost:${BRIDGE_PORT}`));
+
 async function startClient() {
     try {
         await client.initialize();
