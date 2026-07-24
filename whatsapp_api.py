@@ -78,13 +78,15 @@ class WhatsAppRequestHandler(BaseHTTPRequestHandler):
                 has_media = payload.get("hasMedia", False)
                 media_data = payload.get("mediaData")
                 media_mime = payload.get("mediaMime")
+                quoted_media_data = payload.get("quotedMediaData")
+                quoted_media_mime = payload.get("quotedMediaMime")
 
                 if not sender_jid:
                     self._send_json_response(400, {"error": "Missing 'from'"})
                     return
 
                 user_id = phone_to_user_id(sender_jid)
-                result = process_whatsapp_user_message(user_id, sender_name, body, quoted_body, has_media, sender_jid, media_data, media_mime)
+                result = process_whatsapp_user_message(user_id, sender_name, body, quoted_body, has_media, sender_jid, media_data, media_mime, quoted_media_data, quoted_media_mime)
                 formatted_reply = format_markdown_for_whatsapp(result.get("reply", ""))
                 resp = {"status": "success", "reply": formatted_reply}
                 if result.get("mediaPath") and os.path.exists(result["mediaPath"]):
@@ -279,9 +281,18 @@ def is_admin_whatsapp(sender_jid: str) -> bool:
 
 LAST_ADMIN_UPLOAD = {}
 
-def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quoted_body: str = "", has_media: bool = False, sender_jid: str = "", media_data: str = None, media_mime: str = None) -> dict:
+def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quoted_body: str = "", has_media: bool = False, sender_jid: str = "", media_data: str = None, media_mime: str = None, quoted_media_data: str = None, quoted_media_mime: str = None) -> dict:
     global LAST_ADMIN_UPLOAD
     text_lower = (body or "").lower().strip()
+
+    # Extract media from quoted message (swipe reply to photo) if present
+    if not media_data and quoted_media_data:
+        media_data = quoted_media_data
+        if quoted_media_mime:
+            media_mime = quoted_media_mime
+    elif not media_data and quoted_body and (quoted_body.startswith("/9j/") or quoted_body.startswith("iVBOR") or len(quoted_body) > 100):
+        media_data = quoted_body.replace("data:image/jpeg;base64,", "").replace("data:image/png;base64,", "")
+        media_mime = "image/jpeg"
 
     # Cache incoming photo uploads for 10 minutes
     if media_data:

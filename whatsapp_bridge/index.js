@@ -106,6 +106,9 @@ client.on('message_create', async (msg) => {
 
         // Robust Quoted Message Detection for Swipe-Reply
         let quotedBody = "";
+        let quotedMediaData = null;
+        let quotedMediaMime = null;
+
         if (msg.hasQuotedMsg) {
             // Direct synchronous extraction from raw data packet
             if (msg._data) {
@@ -116,25 +119,37 @@ client.on('message_create', async (msg) => {
                     quotedBody = msg._data.quotedBody;
                 }
             }
-            // Quick fallback with timeout
-            if (!quotedBody) {
-                try {
-                    const quoted = await Promise.race([
-                        msg.getQuotedMessage(),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500))
-                    ]);
-                    if (quoted) {
+            try {
+                const quoted = await Promise.race([
+                    msg.getQuotedMessage(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+                ]);
+                if (quoted) {
+                    if (!quotedBody) {
                         quotedBody = quoted.body || quoted.caption || "";
                     }
-                } catch (err) {
-                    console.log("[!] Quoted message async lookup bypassed:", err.message);
+                    if (quoted.hasMedia) {
+                        try {
+                            const qMedia = await quoted.downloadMedia();
+                            if (qMedia && qMedia.data) {
+                                quotedMediaData = qMedia.data;
+                                quotedMediaMime = qMedia.mimetype;
+                            }
+                        } catch (qErr) {
+                            if (quoted.body && typeof quoted.body === 'string' && quoted.body.length > 50) {
+                                quotedMediaData = quoted.body.replace(/^data:image\/\w+;base64,/, '');
+                                quotedMediaMime = 'image/jpeg';
+                            }
+                        }
+                    }
                 }
+            } catch (err) {
+                console.log("[!] Quoted message async lookup bypassed:", err.message);
             }
-            // Guaranteed fallback tag for swipe replies
             if (!quotedBody) {
                 quotedBody = "QUOTED_IMAGE_REPLY";
             }
-            console.log(`[💬 Swipe Reply Detected] Quoted Content: "${quotedBody.substring(0, 60)}..."`);
+            console.log(`[💬 Swipe Reply Detected] Quoted Content: "${quotedBody.substring(0, 60)}..." (hasQuotedMedia: ${!!quotedMediaData})`);
         }
 
         let mediaData = null;
@@ -178,7 +193,9 @@ client.on('message_create', async (msg) => {
             quotedBody,
             hasMedia: msg.hasMedia || false,
             mediaData,
-            mediaMime
+            mediaMime,
+            quotedMediaData,
+            quotedMediaMime
         }, { headers: { 'Content-Type': 'application/json' }, timeout: 30000 });
 
         if (response.data) {
