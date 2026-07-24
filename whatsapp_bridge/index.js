@@ -140,14 +140,23 @@ client.on('message_create', async (msg) => {
         let mediaData = null;
         let mediaMime = null;
         if (msg.hasMedia) {
-            try {
-                const media = await msg.downloadMedia();
-                if (media && media.data) {
-                    mediaData = media.data;
-                    mediaMime = media.mimetype;
+            if (msg.fromMe) {
+                // Self-sent messages need a small delay for WhatsApp Web local media buffer
+                await new Promise(r => setTimeout(r, 1200));
+            }
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const media = await msg.downloadMedia();
+                    if (media && media.data) {
+                        mediaData = media.data;
+                        mediaMime = media.mimetype;
+                        console.log(`[📸 Media Downloaded] Successfully fetched ${mediaMime} (${media.data.length} bytes)`);
+                        break;
+                    }
+                } catch (mediaErr) {
+                    console.error(`[!] Failed to download media payload (attempt ${attempt}/3):`, mediaErr.message || mediaErr);
+                    if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
                 }
-            } catch (mediaErr) {
-                console.error("[!] Failed to download media payload:", mediaErr.message);
             }
         }
 
