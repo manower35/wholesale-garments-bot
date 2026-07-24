@@ -223,6 +223,12 @@ client.on('message_create', async (msg) => {
                 await sendGallery(msg.from, gallery);
                 console.log(`[✅ Gallery Complete] Sent ${gallery.length} product photos`);
             }
+            // PDF DOCUMENT MODE
+            else if (response.data.pdfPath && fs.existsSync(response.data.pdfPath)) {
+                console.log(`[📄 Sending PDF Document] File: ${response.data.pdfPath}`);
+                const pdfMedia = MessageMedia.fromFilePath(response.data.pdfPath);
+                await client.sendMessage(msg.from, pdfMedia, { caption: replyText, sendMediaAsDocument: true });
+            }
             // SINGLE IMAGE MODE
             else if (mediaPath && fs.existsSync(mediaPath)) {
                 console.log(`[📷 Sending Media] File: ${mediaPath}`);

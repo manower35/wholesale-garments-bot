@@ -508,6 +508,138 @@ def process_whatsapp_user_message(user_id: int, sender_name: str, body: str, quo
             )
         }
 
+    # ==========================================
+    # 0.5 🛒 SHOPPING CART & PDF QUOTATION GENERATOR
+    # ==========================================
+    is_cart_add_cmd = (
+        "#cart" in text_lower or
+        "add to cart" in text_lower or
+        text_lower.startswith("cart ") or
+        (text_lower.startswith("add ") and "cart" in text_lower)
+    )
+    if is_cart_add_cmd:
+        combined_text = f"{quoted_body} {body}"
+        prod_id = extract_product_id_from_text(combined_text)
+        if prod_id:
+            product = db.get_product(prod_id)
+            if product:
+                qty = 1
+                qty_match = re.search(r'(\d+)\s*(?:sets?|pcs?|pieces?|sets)?', body, re.IGNORECASE)
+                if qty_match:
+                    try:
+                        q_val = int(qty_match.group(1))
+                        if q_val > 0 and q_val != prod_id:
+                            qty = q_val
+                    except Exception:
+                        pass
+                
+                db.add_to_cart(user_id, prod_id, qty)
+                cart_items = db.get_cart(user_id)
+                total_sets = sum(it.get("quantity", 1) for it in cart_items)
+                
+                return {
+                    "reply": (
+                        f"🛒 *ITEM ADDED TO YOUR CART!*\n\n"
+                        f"🆔 Product ID: *#{prod_id}*\n"
+                        f"👗 Garment: *{product['name']}*\n"
+                        f"📁 Category: *{product['category']}*\n"
+                        f"📐 Sizes: *{product.get('sizes', 'Standard')}*\n"
+                        f"📦 Quantity: *{qty} Set(s)*\n\n"
+                        f"🛒 *Cart Summary:* {len(cart_items)} item(s) ({total_sets} total sets)\n\n"
+                        f"📲 Type *cart* to view your shopping cart\n"
+                        f"📄 Type *pdf* or *checkout* to generate your Wholesale Quotation PDF!"
+                    )
+                }
+            else:
+                return {"reply": f"❌ *Product ID #{prod_id} not found in catalog!*"}
+        else:
+            return {"reply": "⚠️ *Product ID missing for cart!*\n\n👉 *Usage:* Swipe-Reply to any photo card with `#cart` or type `cart 199`."}
+
+    # View Cart Command
+    if text_lower in ["cart", "my cart", "view cart", "/cart"]:
+        cart_items = db.get_cart(user_id)
+        if not cart_items:
+            return {
+                "reply": (
+                    "🛒 *Your Shopping Cart is currently empty!*\n\n"
+                    "👉 Browse any category (e.g. *15 August*, *Frock*, *Plazo*) and **Swipe-Reply `#cart`** to add items to your cart!\n"
+                    "👉 Or type `cart 199` to add Product #199."
+                )
+            }
+        
+        cart_lines = []
+        total_sets = 0
+        total_price = 0.0
+        for idx, it in enumerate(cart_items, 1):
+            p_id = it.get("product_id") or it.get("id")
+            p_name = it.get("name", "Garment")
+            p_qty = it.get("quantity", 1)
+            p_price = float(it.get("price", 0.0))
+            if p_price <= 0: p_price = 650.0
+            line_total = p_price * p_qty
+            total_sets += p_qty
+            total_price += line_total
+            cart_lines.append(f"  {idx}. *#{p_id}* - {p_name}\n     📐 Sizes: {it.get('sizes','Standard')} | 📦 Qty: *{p_qty} Set(s)* (Est: ₹{line_total:,.2f})")
+            
+        cart_text = "\n".join(cart_lines)
+        return {
+            "reply": (
+                f"🛒 *YOUR AT SELECTION SHOPPING CART:*\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"{cart_text}\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"📊 Total Selected Designs: *{len(cart_items)}*\n"
+                f"📦 Total Ordered Quantity: *{total_sets} Sets*\n"
+                f"💰 Estimated Wholesale Total: *₹{total_price:,.2f}*\n\n"
+                f"📄 Type *pdf* or *checkout* to generate your Wholesale Quotation PDF!\n"
+                f"🧹 Type *clear cart* to empty your cart."
+            )
+        }
+
+    # Clear Cart Command
+    if text_lower in ["clear cart", "empty cart", "/clear cart", "clear"]:
+        db.clear_cart(user_id)
+        return {"reply": "🧹 *Your shopping cart has been cleared!*"}
+
+    # Remove Item from Cart Command
+    remove_cart_match = re.match(r'^(?:remove|delete cart|remove cart)\s+#?(\d{1,5})$', text_lower)
+    if remove_cart_match:
+        p_id = int(remove_cart_match.group(1))
+        db.remove_from_cart(user_id, p_id)
+        return {"reply": f"🗑️ *Item #{p_id} removed from your shopping cart!*"}
+
+    # Checkout & Generate PDF Quotation
+    if text_lower in ["checkout", "pdf", "quotation", "invoice", "download pdf", "get pdf", "generate pdf", "/pdf", "/checkout"]:
+        cart_items = db.get_cart(user_id)
+        if not cart_items:
+            return {
+                "reply": (
+                    "🛒 *Your cart is currently empty!*\n\n"
+                    "👉 Browse any category (e.g. *15 August*, *Frock*, *Plazo*) and **Swipe-Reply `#cart`** to add items before generating a PDF quotation."
+                )
+            }
+            
+        import pdf_generator
+        pdf_path = pdf_generator.generate_wholesale_quotation_pdf(user_id, sender_name, sender_jid, cart_items)
+        
+        # Log inquiry in database
+        db.save_inquiry(user_id, sender_name, str(user_id), cart_items)
+        
+        # Clear cart after checkout
+        db.clear_cart(user_id)
+        
+        return {
+            "reply": (
+                f"📄 *OFFICIAL WHOLESALE QUOTATION GENERATED!*\n\n"
+                f"🏢 *Business:* {config.BUSINESS_NAME}\n"
+                f"📋 *Customer:* {sender_name}\n"
+                f"📦 *Total Items:* {len(cart_items)} design(s)\n"
+                f"📄 *Your PDF Wholesale Quotation Invoice is attached below!*\n\n"
+                f"📞 Call *+91 {config.OWNER_PHONES[0]}* for order confirmation & dispatch status."
+            ),
+            "pdfPath": pdf_path
+        }
+
     # Detect if message is a Product Card / Swipe-Reply / Forwarded Image Card
     is_product_card_msg = (
         bool(quoted_body) or
