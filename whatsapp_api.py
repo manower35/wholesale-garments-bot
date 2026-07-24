@@ -89,6 +89,8 @@ class WhatsAppRequestHandler(BaseHTTPRequestHandler):
                 result = process_whatsapp_user_message(user_id, sender_name, body, quoted_body, has_media, sender_jid, media_data, media_mime, quoted_media_data, quoted_media_mime)
                 formatted_reply = format_markdown_for_whatsapp(result.get("reply", ""))
                 resp = {"status": "success", "reply": formatted_reply}
+                if result.get("pdfPath") and os.path.exists(result["pdfPath"]):
+                    resp["pdfPath"] = result["pdfPath"]
                 if result.get("mediaPath") and os.path.exists(result["mediaPath"]):
                     resp["mediaPath"] = result["mediaPath"]
                 if result.get("gallery"):
