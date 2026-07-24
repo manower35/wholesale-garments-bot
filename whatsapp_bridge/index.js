@@ -140,8 +140,11 @@ client.on('message_create', async (msg) => {
         let mediaData = null;
         let mediaMime = null;
         if (msg.hasMedia) {
+            console.log(`[🔍 Media Debug] type: ${msg.type}, fromMe: ${msg.fromMe}, _data keys: ${Object.keys(msg._data || {}).join(', ')}`);
+            if (msg._data && msg._data.body) {
+                console.log(`[🔍 Media Debug] _data.body length: ${msg._data.body.length}, startsWith: ${msg._data.body.substring(0, 30)}`);
+            }
             if (msg.fromMe) {
-                // Self-sent messages need a small delay for WhatsApp Web local media buffer
                 await new Promise(r => setTimeout(r, 1200));
             }
             for (let attempt = 1; attempt <= 3; attempt++) {
@@ -157,6 +160,12 @@ client.on('message_create', async (msg) => {
                     console.error(`[!] Failed to download media payload (attempt ${attempt}/3):`, mediaErr.message || mediaErr);
                     if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
                 }
+            }
+            // Fallback for self-sent images if downloadMedia fails
+            if (!mediaData && msg._data && msg._data.body && (msg.type === 'image' || msg.type === 'sticker')) {
+                console.log(`[💡 Media Fallback] Using msg._data.body base64 thumbnail for self-sent image!`);
+                mediaData = msg._data.body.replace(/^data:image\/\w+;base64,/, '');
+                mediaMime = msg.type === 'image' ? 'image/jpeg' : 'image/webp';
             }
         }
 
