@@ -195,10 +195,11 @@ client.on('message_create', async (msg) => {
             }
         }
 
-        console.log(`\n[📥 Message] From: ${senderName} (${msg.from}) -> "${body}" (hasMedia: ${msg.hasMedia}, hasQuoted: ${msg.hasQuotedMsg})`);
+        const senderJid = (contact && contact.number) ? (contact.number + '@c.us') : (msg.author || msg.from);
+        console.log(`\n[📥 Message] From: ${senderName} (${senderJid}) -> "${body}" (hasMedia: ${msg.hasMedia}, hasQuoted: ${msg.hasQuotedMsg})`);
 
         const response = await axios.post(PYTHON_API_URL, {
-            from: msg.from, 
+            from: senderJid, 
             senderName, 
             body,
             quotedBody,

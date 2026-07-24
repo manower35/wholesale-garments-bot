@@ -122,7 +122,19 @@ def generate_wholesale_quotation_pdf(user_id: int, customer_name: str, customer_
     story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor('#FF6F00'), spaceAfter=12))
     
     # 2. QUOTATION METADATA BOX
-    clean_phone = customer_phone if customer_phone else str(user_id)
+    import re
+    raw_phone = str(customer_phone or "").split('@')[0].strip()
+    digits_only = re.sub(r'\D', '', raw_phone)
+    
+    if len(digits_only) == 10:
+        formatted_phone = f"+91 {digits_only}"
+    elif len(digits_only) == 12 and digits_only.startswith("91"):
+        formatted_phone = f"+91 {digits_only[2:]}"
+    elif digits_only and not str(customer_phone or "").endswith("lid") and len(digits_only) <= 12:
+        formatted_phone = f"+{digits_only}"
+    else:
+        formatted_phone = "WhatsApp Registered Buyer"
+
     meta_left = Paragraph(
         f"<b>OFFICIAL WHOLESALE ESTIMATE & QUOTATION</b><br/>"
         f"<b>Quotation No:</b> <font color='#1A237E'><b>#{quotation_no}</b></font><br/>"
@@ -132,7 +144,7 @@ def generate_wholesale_quotation_pdf(user_id: int, customer_name: str, customer_
     meta_right = Paragraph(
         f"<b>CUSTOMER DETAILS:</b><br/>"
         f"<b>Name / Business:</b> {customer_name}<br/>"
-        f"<b>WhatsApp Contact:</b> +{clean_phone}",
+        f"<b>WhatsApp Contact:</b> {formatted_phone}",
         body_regular
     )
     
