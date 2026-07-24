@@ -257,11 +257,6 @@ def match_category_by_alias(text_lower: str) -> str | None:
                 all_keywords.append(kw)
                 kw_to_cat[kw] = cat_name
                 
-    close_matches = difflib.get_close_matches(clean_text, all_keywords, n=1, cutoff=0.65)
-    if close_matches:
-        matched_kw = close_matches[0]
-        return kw_to_cat[matched_kw]
-
     return None
 
 def is_admin_whatsapp(sender_jid: str) -> bool:
@@ -278,6 +273,43 @@ def is_admin_whatsapp(sender_jid: str) -> bool:
             return True
     user_id = phone_to_user_id(sender_jid)
     return db.is_admin(user_id)
+
+def extract_product_id_from_text(text: str) -> int | None:
+    if not text:
+        return None
+    
+    # Priority 1: Match "No: 70" or "No: *70*" (This is the exact Product ID in photo cards)
+    no_match = re.search(r'No\s*:\s*\*?(\d{1,5})\*?', text, re.IGNORECASE)
+    if no_match:
+        try:
+            return int(no_match.group(1))
+        except ValueError:
+            pass
+            
+    # Priority 2: Match "#delete 70" or "delete 70" or "/delete 70" in user command
+    cmd_match = re.search(r'(?:#delete|/delete|delete|remove)\s*#?(\d{1,5})\b', text, re.IGNORECASE)
+    if cmd_match:
+        try:
+            return int(cmd_match.group(1))
+        except ValueError:
+            pass
+
+    # Priority 3: Match "Product ID: 70" or "ID: 70" or "No. 70" or "#70"
+    id_match = re.search(r'(?:product\s*id|item\s*id|id|number|num|\#)\s*[:\.\#\*-]*\s*\*?(\d{1,5})\*?', text, re.IGNORECASE)
+    if id_match:
+        try:
+            return int(id_match.group(1))
+        except ValueError:
+            pass
+
+    # Priority 4: Fallback to standalone number
+    m2 = re.search(r'\b(\d{1,5})\b', text)
+    if m2:
+        try:
+            return int(m2.group(1))
+        except ValueError:
+            pass
+    return None
 
 LAST_ADMIN_UPLOAD = {}
 
