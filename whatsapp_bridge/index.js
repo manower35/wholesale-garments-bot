@@ -265,5 +265,12 @@ app.get('/', (req, res) => {
         </div></body></html>`);
 });
 
-app.listen(BRIDGE_PORT, () => console.log(`[*] Dashboard at http://localhost:${BRIDGE_PORT}`));
-client.initialize();
+async function startClient() {
+    try {
+        await client.initialize();
+    } catch (err) {
+        console.log(`[!] WhatsApp initialization error: ${err.message}. Retrying in 3 seconds...`);
+        setTimeout(() => startClient(), 3000);
+    }
+}
+startClient();
