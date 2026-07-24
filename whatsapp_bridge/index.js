@@ -92,16 +92,22 @@ client.on('message_create', async (msg) => {
     try {
         if (msg.from.endsWith('@g.us') || msg.from.includes('status')) return;
 
-        // If message is sent by self (fromMe), process admin commands & bot testing commands (#start, hi, menu, categories)
+        // If message is sent by self (fromMe), process admin & test commands, but IGNORE bot output replies to prevent loops
         if (msg.fromMe) {
             const txt = (msg.body || "").trim().toLowerCase();
+            
+            // Ignore bot's own formatted responses to avoid feedback loops!
+            if (txt.includes("at selection") || txt.includes("wholesale garments catalog") || txt.includes("swipe-reply") || txt.includes("matching products for")) {
+                return;
+            }
+
             const isTestCmd = txt.startsWith("#add") || txt.startsWith("/add") || txt.startsWith("add ") ||
                               txt.startsWith("#delete") || txt.startsWith("/delete") || txt.startsWith("delete") ||
                               txt.startsWith("#start") || txt.startsWith("/start") || txt === "start" ||
                               txt === "hi" || txt === "hello" || txt === "menu" || txt.startsWith("/menu") ||
-                              txt.includes("august") || txt.includes("independence") || txt.includes("frock") ||
-                              txt.includes("plazo") || txt.includes("western") || txt.includes("crop") ||
-                              txt.includes("night") || txt.includes("stock");
+                              txt === "15 august" || txt === "independence" || txt === "frock" ||
+                              txt === "plazo" || txt === "western" || txt === "crop top" ||
+                              txt === "nightwear" || txt === "stock";
             if (!isTestCmd) return;
         }
 
